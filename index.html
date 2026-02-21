@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Alien AI v2</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; background: #000; color: #00fff2; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        #controls { background: rgba(0,255,242,0.1); padding: 20px; border-radius: 15px; border: 1px solid #00fff2; text-align: center; z-index: 10; }
+        button { background: #00fff2; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        input { background: rgba(0,0,0,0.5); border: 1px solid #00fff2; color: #fff; padding: 8px; border-radius: 5px; margin-bottom: 10px; width: 200px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <h3>ALIEN AI CONNECT</h3>
+        <input type="text" id="ip-input" placeholder="IP: 192.168.x.x">
+        <br>
+        <button id="talk-btn">🎤 ابدأ التحدث</button>
+        <p id="status">جاهز</p>
+    </div>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        const head = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5, 2), new THREE.MeshPhongMaterial({color: 0x4400ff, wireframe: true}));
+        scene.add(head);
+        const light = new THREE.PointLight(0xffffff, 1); light.position.set(5,5,5); scene.add(light, new THREE.AmbientLight(0x222222));
+        camera.position.z = 4;
+        function animate() { requestAnimationFrame(animate); head.rotation.y += 0.01; renderer.render(scene, camera); }
+        animate();
+
+        const btn = document.getElementById('talk-btn');
+        const ipIn = document.getElementById('ip-input');
+        const status = document.getElementById('status');
+        
+        // Auto-load IP
+        if(localStorage.getItem('saved_ip')) ipIn.value = localStorage.getItem('saved_ip');
+
+        btn.onclick = () => {
+            const ip = ipIn.value;
+            if(!ip) return alert("ادخل IP اللابتوب أولاً");
+            localStorage.setItem('saved_ip', ip);
+            
+            const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const rec = new Speech();
+            rec.lang = 'ar-SA';
+            rec.onstart = () => { btn.style.background = 'red'; status.innerText = "أسمعك..."; };
+            rec.onresult = (e) => {
+                const text = e.results[0][0].transcript;
+                status.innerText = "قلت: " + text;
+                const ws = new WebSocket(`ws://${ip}:18789/ws`);
+                ws.onopen = () => {
+                    ws.send(JSON.stringify({type:"auth", token:"f1dbc616b475a94e309fcb944a14509a21983c793e290426"}));
+                    ws.send(JSON.stringify({type:"user_message", text: text}));
+                };
+                ws.onmessage = (ev) => {
+                    const d = JSON.parse(ev.data);
+                    if(d.type === "agent_response") {
+                        const s = window.speechSynthesis;
+                        const u = new SpeechSynthesisUtterance(d.text);
+                        u.lang = 'ar-SA';
+                        s.speak(u);
+                    }
+                };
+            };
+            rec.onend = () => { btn.style.background = '#00fff2'; };
+            rec.start();
+        };
+    </script>
+</body>
+</html>
