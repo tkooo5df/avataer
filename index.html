@@ -46,8 +46,9 @@
         // Stylized Parrot Group
         const parrot = new THREE.Group();
         
-        // Body (Red)
-        const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 0.8, 4, 8), new THREE.MeshPhongMaterial({color: 0xff0000}));
+        // Body (Simplified with Cylinder since CapsuleGeometry is newer)
+        const bodyGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.2, 16);
+        const body = new THREE.Mesh(bodyGeo, new THREE.MeshPhongMaterial({color: 0xff0000}));
         parrot.add(body);
 
         // Head (Red)
