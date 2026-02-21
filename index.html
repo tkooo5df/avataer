@@ -107,7 +107,12 @@
         const startBtn = document.getElementById('start-btn');
         const statusText = document.getElementById('status-text');
         const transcriptDiv = document.getElementById('transcript');
-        const GATEWAY_URL = "ws://34.31.199.7:18789/ws"; // Your IP
+        
+        // Dynamic IP Request
+        let serverIP = localStorage.getItem('saved_ip') || prompt("الرجاء إدخال IP اللابتوب المتصل بـ OpenClaw:", "10.128.0.3");
+        if(serverIP) localStorage.setItem('saved_ip', serverIP);
+        
+        const GATEWAY_URL = `ws://${serverIP}:18789/ws`;
 
         const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = new Speech();
