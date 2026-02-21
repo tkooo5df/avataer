@@ -2,73 +2,146 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Alien AI v2</title>
+    <title>Amine Smart Parrot AI</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; background: #000; color: #00fff2; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        #controls { background: rgba(0,255,242,0.1); padding: 20px; border-radius: 15px; border: 1px solid #00fff2; text-align: center; z-index: 10; }
-        button { background: #00fff2; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        input { background: rgba(0,0,0,0.5); border: 1px solid #00fff2; color: #fff; padding: 8px; border-radius: 5px; margin-bottom: 10px; width: 200px; text-align: center; }
+        body { margin: 0; background: #000; color: #00fff2; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        #ui-layer { position: relative; z-index: 2; pointer-events: none; width: 100%; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 40px; }
+        .controls { pointer-events: auto; background: rgba(0, 0, 0, 0.6); padding: 25px; border-radius: 30px; border: 2px solid #ffcc00; backdrop-filter: blur(15px); text-align: center; box-shadow: 0 0 30px rgba(255, 204, 0, 0.3); }
+        button { background: #ffcc00; color: #000; border: none; padding: 15px 35px; border-radius: 50px; font-weight: bold; cursor: pointer; font-size: 18px; transition: 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        button:hover { transform: scale(1.1); background: #fff; }
+        #status-text { margin-bottom: 15px; font-size: 16px; font-weight: bold; color: #ffcc00; letter-spacing: 2px; }
+        .speaking { animation: shake 0.5s infinite; }
+        @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 20% { transform: translate(-1px, -2px) rotate(-1deg); } 40% { transform: translate(-3px, 0px) rotate(1deg); } 100% { transform: translate(1px, 1px) rotate(0deg); } }
     </style>
 </head>
 <body>
-    <div id="controls">
-        <h3>ALIEN AI CONNECT</h3>
-        <input type="text" id="ip-input" placeholder="IP: 192.168.x.x">
-        <br>
-        <button id="talk-btn">🎤 ابدأ التحدث</button>
-        <p id="status">جاهز</p>
+    <div id="canvas-container"></div>
+    <div id="ui-layer">
+        <div class="controls">
+            <div id="status-text">🦜 PARROT AI ONLINE</div>
+            <button id="start-btn">🦜 اضغط لتحدث الببغاء</button>
+            <div id="transcript" style="margin-top: 15px; font-size: 14px; color: #fff; opacity: 0.8;"></div>
+        </div>
     </div>
+
     <script>
+        // --- 3D SPACE & PARROT ---
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-        const head = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5, 2), new THREE.MeshPhongMaterial({color: 0x4400ff, wireframe: true}));
-        scene.add(head);
-        const light = new THREE.PointLight(0xffffff, 1); light.position.set(5,5,5); scene.add(light, new THREE.AmbientLight(0x222222));
-        camera.position.z = 4;
-        function animate() { requestAnimationFrame(animate); head.rotation.y += 0.01; renderer.render(scene, camera); }
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Space Stars
+        const starsGeo = new THREE.BufferGeometry();
+        const starsCount = 2000;
+        const starPos = new Float32Array(starsCount * 3);
+        for(let i=0; i<starsCount * 3; i++) { starPos[i] = (Math.random() - 0.5) * 20; }
+        starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const stars = new THREE.Points(starsGeo, new THREE.PointsMaterial({color: 0xffffff, size: 0.02}));
+        scene.add(stars);
+
+        // Stylized Parrot Group
+        const parrot = new THREE.Group();
+        
+        // Body (Red)
+        const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 0.8, 4, 8), new THREE.MeshPhongMaterial({color: 0xff0000}));
+        parrot.add(body);
+
+        // Head (Red)
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), new THREE.MeshPhongMaterial({color: 0xff0000}));
+        head.position.y = 0.8;
+        parrot.add(head);
+
+        // Beak (Yellow)
+        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 16), new THREE.MeshPhongMaterial({color: 0xffcc00}));
+        beak.rotation.x = Math.PI / 2;
+        beak.position.set(0, 0.8, 0.4);
+        parrot.add(beak);
+
+        // Wings (Blue)
+        const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.4), new THREE.MeshPhongMaterial({color: 0x0000ff}));
+        wingL.position.set(-0.5, 0.2, 0);
+        const wingR = wingL.clone();
+        wingR.position.x = 0.5;
+        parrot.add(wingL, wingR);
+
+        // Speech Waves (Rings)
+        const rings = [];
+        for(let i=0; i<3; i++) {
+            const ring = new THREE.Mesh(
+                new THREE.TorusGeometry(1 + i*0.3, 0.02, 16, 100),
+                new THREE.MeshBasicMaterial({color: 0x00fff2, transparent: true, opacity: 0.5})
+            );
+            ring.rotation.x = Math.PI / 2;
+            scene.add(ring);
+            rings.push(ring);
+        }
+
+        scene.add(parrot);
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(5, 5, 5);
+        scene.add(light, new THREE.AmbientLight(0x404040));
+        camera.position.set(0, 0, 4);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            parrot.rotation.y += 0.01;
+            parrot.position.y = Math.sin(Date.now() * 0.002) * 0.2; // Float effect
+            stars.rotation.y += 0.0005;
+            
+            // Pulse rings
+            rings.forEach((r, i) => {
+                r.scale.setScalar(1 + Math.sin(Date.now() * 0.005 + i) * 0.1);
+                r.material.opacity = 0.5 + Math.sin(Date.now() * 0.005 + i) * 0.2;
+            });
+            
+            renderer.render(scene, camera);
+        }
         animate();
 
-        const btn = document.getElementById('talk-btn');
-        const ipIn = document.getElementById('ip-input');
-        const status = document.getElementById('status');
-        
-        // Auto-load IP
-        if(localStorage.getItem('saved_ip')) ipIn.value = localStorage.getItem('saved_ip');
+        // --- BRAIN CONNECTION ---
+        const startBtn = document.getElementById('start-btn');
+        const statusText = document.getElementById('status-text');
+        const transcriptDiv = document.getElementById('transcript');
+        const GATEWAY_URL = "ws://34.31.199.7:18789/ws"; // Your IP
 
-        btn.onclick = () => {
-            const ip = ipIn.value;
-            if(!ip) return alert("ادخل IP اللابتوب أولاً");
-            localStorage.setItem('saved_ip', ip);
-            
-            const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const rec = new Speech();
-            rec.lang = 'ar-SA';
-            rec.onstart = () => { btn.style.background = 'red'; status.innerText = "أسمعك..."; };
-            rec.onresult = (e) => {
-                const text = e.results[0][0].transcript;
-                status.innerText = "قلت: " + text;
-                const ws = new WebSocket(`ws://${ip}:18789/ws`);
-                ws.onopen = () => {
-                    ws.send(JSON.stringify({type:"auth", token:"f1dbc616b475a94e309fcb944a14509a21983c793e290426"}));
-                    ws.send(JSON.stringify({type:"user_message", text: text}));
-                };
-                ws.onmessage = (ev) => {
-                    const d = JSON.parse(ev.data);
-                    if(d.type === "agent_response") {
-                        const s = window.speechSynthesis;
-                        const u = new SpeechSynthesisUtterance(d.text);
-                        u.lang = 'ar-SA';
-                        s.speak(u);
-                    }
-                };
-            };
-            rec.onend = () => { btn.style.background = '#00fff2'; };
-            rec.start();
+        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new Speech();
+        recognition.lang = 'ar-SA';
+
+        recognition.onstart = () => { startBtn.innerText = "🦜 الببغاء ينصت..."; startBtn.style.background = "#fff"; };
+        recognition.onresult = (e) => {
+            const text = e.results[0][0].transcript;
+            transcriptDiv.innerText = "أنت: " + text;
+            sendToBrain(text);
         };
+        recognition.onend = () => { startBtn.innerText = "🦜 اضغط لتحدث الببغاء"; startBtn.style.background = "#ffcc00"; };
+
+        function sendToBrain(msg) {
+            const ws = new WebSocket(GATEWAY_URL);
+            ws.onopen = () => {
+                ws.send(JSON.stringify({type:"auth", token:"f1dbc616b475a94e309fcb944a14509a21983c793e290426"}));
+                ws.send(JSON.stringify({type:"user_message", text: msg}));
+            };
+            ws.onmessage = (ev) => {
+                const d = JSON.parse(ev.data);
+                if(d.type === "agent_response") parrotSpeak(d.text);
+            };
+        }
+
+        function parrotSpeak(text) {
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'ar-SA';
+            u.pitch = 1.5; // High pitch like a parrot!
+            u.onstart = () => { parrot.scale.setScalar(1.2); statusText.innerText = "🦜 الببغاء يتحدث..."; };
+            u.onend = () => { parrot.scale.setScalar(1); statusText.innerText = "🦜 PARROT AI ONLINE"; };
+            window.speechSynthesis.speak(u);
+        }
+
+        startBtn.onclick = () => recognition.start();
     </script>
 </body>
 </html>
